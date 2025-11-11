@@ -46,7 +46,7 @@ class RenderJob(Base, TimestampMixin):
     error_message = Column(String(1000), nullable=True)
 
     # Metadata
-    metadata = Column(JSONB, nullable=True, default={})  # Store duration, resolution, etc.
+    render_metadata = Column(JSONB, nullable=True, default={})  # Store duration, resolution, etc.
 
     # Relationships
     project = relationship("Project", back_populates="render_jobs")

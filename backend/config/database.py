@@ -8,7 +8,7 @@ from contextlib import contextmanager
 import os
 from typing import Generator
 
-from backend.models.base import Base
+from models.base import Base
 
 # Database URL from environment
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/videofoundry")

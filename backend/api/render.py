@@ -8,10 +8,10 @@ from uuid import UUID
 import asyncio
 import json
 
-from backend.config import get_db
-from backend.models import RenderJob
-from backend.schemas import RenderJobCreate, RenderJobResponse
-from backend.services import RabbitMQClient, RedisClient, RenderOrchestrator
+from config import get_db
+from models import RenderJob
+from schemas import RenderJobCreate, RenderJobResponse
+from services import RabbitMQClient, RedisClient, RenderOrchestrator
 
 router = APIRouter(prefix="/api", tags=["render"])
 

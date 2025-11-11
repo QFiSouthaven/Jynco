@@ -6,10 +6,10 @@ from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 
-from backend.config import get_db
-from backend.models import Segment, Project
-from backend.models.segment import SegmentStatus
-from backend.schemas import SegmentCreate, SegmentUpdate, SegmentResponse
+from config import get_db
+from models import Segment, Project
+from models.segment import SegmentStatus
+from schemas import SegmentCreate, SegmentUpdate, SegmentResponse
 
 router = APIRouter(prefix="/api", tags=["segments"])
 

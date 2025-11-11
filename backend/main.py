@@ -6,8 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import logging
 
-from backend.config import init_db, get_settings
-from backend.api import projects, segments, render
+from config import init_db, get_settings
+from api import projects, segments, render
 
 # Configure logging
 logging.basicConfig(

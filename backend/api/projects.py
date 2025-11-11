@@ -6,9 +6,9 @@ from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 
-from backend.config import get_db
-from backend.models import Project
-from backend.schemas import ProjectCreate, ProjectUpdate, ProjectResponse
+from config import get_db
+from models import Project
+from schemas import ProjectCreate, ProjectUpdate, ProjectResponse
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 

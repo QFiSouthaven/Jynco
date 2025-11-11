@@ -8,6 +8,8 @@ import os
 import sys
 from uuid import UUID
 from pathlib import Path
+import time
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -17,6 +19,7 @@ from backend.models import Segment
 from backend.models.segment import SegmentStatus
 from backend.services import RabbitMQClient, RedisClient, S3Client
 from adapters import VideoModelFactory
+import pika.exceptions
 
 logging.basicConfig(
     level=logging.INFO,
@@ -224,22 +227,63 @@ class AIWorker:
             # Clean up temp file
             Path(tmp_path).unlink(missing_ok=True)
 
+    @retry(
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(multiplier=1, min=4, max=60),
+        retry=retry_if_exception_type((pika.exceptions.AMQPConnectionError, ConnectionError)),
+        reraise=True
+    )
+    def _connect_and_consume(self):
+        """Connect to RabbitMQ and start consuming with retry logic."""
+        def callback(message: dict):
+            """Callback for RabbitMQ messages with error handling."""
+            try:
+                asyncio.run(self.process_segment_task(message))
+            except Exception as e:
+                logger.error(f"Error processing message: {e}", exc_info=True)
+                # Message will be requeued if not acknowledged
+                raise
+
+        logger.info(f"Connecting to RabbitMQ and starting consumer on queue: {self.queue_name}")
+        self.rabbitmq.consume_messages(self.queue_name, callback)
+
     def run(self):
-        """Start the worker and begin consuming messages."""
+        """Start the worker and begin consuming messages with resilience."""
         logger.info(f"AI Worker starting. Listening on queue: {self.queue_name}")
 
-        def callback(message: dict):
-            """Callback for RabbitMQ messages."""
-            asyncio.run(self.process_segment_task(message))
+        max_retries = 3
+        retry_count = 0
 
-        try:
-            self.rabbitmq.consume_messages(self.queue_name, callback)
-        except KeyboardInterrupt:
-            logger.info("Worker stopped by user")
-        except Exception as e:
-            logger.error(f"Worker error: {e}", exc_info=True)
-        finally:
-            self.rabbitmq.close()
+        while retry_count < max_retries:
+            try:
+                self._connect_and_consume()
+            except KeyboardInterrupt:
+                logger.info("Worker stopped by user")
+                break
+            except (pika.exceptions.AMQPConnectionError, ConnectionError) as e:
+                retry_count += 1
+                wait_time = min(2 ** retry_count, 60)
+                logger.error(
+                    f"Connection error (attempt {retry_count}/{max_retries}): {e}. "
+                    f"Retrying in {wait_time}s..."
+                )
+                if retry_count < max_retries:
+                    time.sleep(wait_time)
+                else:
+                    logger.error("Max retries reached. Exiting.")
+                    raise
+            except Exception as e:
+                logger.error(f"Unexpected worker error: {e}", exc_info=True)
+                retry_count += 1
+                if retry_count < max_retries:
+                    time.sleep(5)
+                else:
+                    raise
+            finally:
+                try:
+                    self.rabbitmq.close()
+                except:
+                    pass
 
 
 if __name__ == "__main__":

@@ -71,6 +71,7 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - local_videos:/videos  # Local video storage
     depends_on:
       postgres:
         condition: service_healthy
@@ -85,7 +86,6 @@ services:
     build:
       context: ./workers/ai_worker
       dockerfile: Dockerfile
-    container_name: vf_ai_worker
     environment:
       DATABASE_URL: postgresql://postgres:password@postgres:5432/videofoundry
       REDIS_URL: redis://redis:6379/0
@@ -99,7 +99,9 @@ services:
       COMFYUI_URL: ${COMFYUI_URL:-http://comfyui:8188}
     volumes:
       - ./workers/ai_worker:/app
+      - ./backend:/app/backend
       - worker_temp:/tmp/worker
+      - local_videos:/videos  # Local video storage
     depends_on:
       postgres:
         condition: service_healthy
@@ -107,10 +109,15 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-      comfyui:
-        condition: service_started
+      # comfyui:
+      #   condition: service_healthy
     deploy:
       replicas: 2  # Scale workers horizontally
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
     command: python worker.py
 
   # Composition Worker Service
@@ -129,7 +136,9 @@ services:
       AWS_REGION: ${AWS_REGION:-us-east-1}
     volumes:
       - ./workers/composition_worker:/app
+      - ./backend:/app/backend
       - composition_temp:/tmp/composition
+      - local_videos:/videos  # Local video storage
     depends_on:
       postgres:
         condition: service_healthy
@@ -137,6 +146,7 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    restart: on-failure:3
     command: python worker.py
 
   # Frontend Web UI
@@ -149,7 +159,7 @@ services:
       VITE_API_URL: http://localhost:8000
       VITE_WS_URL: ws://localhost:8000
     ports:
-      - "3000:3000"
+      - "5173:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -157,26 +167,36 @@ services:
       - backend
     command: npm run dev
 
-  # ComfyUI Service for AI Video/Image Generation
-  comfyui:
-    image: yanwk/comfyui-boot:latest
-    container_name: vf_comfyui
-    ports:
-      - "8188:8188"
-    volumes:
-      - comfyui_models:/home/runner/ComfyUI/models
-      - comfyui_output:/home/runner/ComfyUI/output
-      - comfyui_input:/home/runner/ComfyUI/input
-    environment:
-      - CLI_ARGS=--listen 0.0.0.0 --port 8188
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    restart: unless-stopped
+  # ComfyUI Service for AI Video/Image Generation (Local Hardware)
+  # Note: ComfyUI needs to be set up separately or use a custom build
+  # Commented out for now - workers will fall back to mock adapter
+  # comfyui:
+  #   image: python:3.11-slim  # Placeholder - need custom ComfyUI setup
+  #   container_name: vf_comfyui
+  #   ports:
+  #     - "8188:8188"
+  #   volumes:
+  #     - comfyui_models:/models
+  #     - comfyui_output:/output
+  #     - comfyui_input:/input
+  #     - local_videos:/videos  # Local video storage
+  #   environment:
+  #     - CLI_ARGS=--listen 0.0.0.0 --port 8188
+  #   # Uncomment for GPU support (NVIDIA)
+  #   # deploy:
+  #   #   resources:
+  #   #     reservations:
+  #   #       devices:
+  #   #         - driver: nvidia
+  #   #           count: all
+  #   #           capabilities: [gpu]
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8188"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 60s
 
 volumes:
   postgres_data:
@@ -187,6 +207,7 @@ volumes:
   comfyui_models:
   comfyui_output:
   comfyui_input:
+  local_videos:  # Local video storage for generated content
 
 networks:
   default:

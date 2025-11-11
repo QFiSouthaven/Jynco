@@ -7,6 +7,8 @@ import os
 from typing import Dict, Any, Optional, Callable
 from uuid import UUID
 import logging
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -30,14 +32,21 @@ class RabbitMQClient:
         self.connection = None
         self.channel = None
 
+    @retry(
+        stop=stop_after_attempt(10),
+        wait=wait_exponential(multiplier=1, min=2, max=30),
+        retry=retry_if_exception_type((pika.exceptions.AMQPConnectionError, ConnectionError)),
+        reraise=True
+    )
     def connect(self):
-        """Establish connection to RabbitMQ."""
+        """Establish connection to RabbitMQ with retry logic."""
         if self.connection is None or self.connection.is_closed:
+            logger.info(f"Attempting to connect to RabbitMQ at {self.rabbitmq_url}")
             self.connection = pika.BlockingConnection(
                 pika.URLParameters(self.rabbitmq_url)
             )
             self.channel = self.connection.channel()
-            logger.info("Connected to RabbitMQ")
+            logger.info("Successfully connected to RabbitMQ")
 
     def close(self):
         """Close connection to RabbitMQ."""
