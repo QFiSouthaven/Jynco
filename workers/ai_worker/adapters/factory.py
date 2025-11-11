@@ -8,6 +8,7 @@ from .base import VideoModelInterface
 from .runway import RunwayGen3Adapter
 from .stability import StabilityAIAdapter
 from .mock import MockAIAdapter
+from .local_sd import LocalStableDiffusionAdapter
 
 
 class VideoModelFactory:
@@ -23,7 +24,9 @@ class VideoModelFactory:
         "stability-ai": StabilityAIAdapter,
         "stability": StabilityAIAdapter,  # Alias
         "mock-ai": MockAIAdapter,
-        "mock": MockAIAdapter  # Alias
+        "mock": MockAIAdapter,  # Alias
+        "local-sd": LocalStableDiffusionAdapter,
+        "local-stable-diffusion": LocalStableDiffusionAdapter,  # Alias
     }
 
     @classmethod
@@ -63,9 +66,9 @@ class VideoModelFactory:
         if api_key is None:
             api_key = cls._get_api_key_from_env(model_name_lower)
 
-        # Mock adapter doesn't require a real API key
-        if model_name_lower in ["mock", "mock-ai"]:
-            api_key = api_key or "mock_key"
+        # Mock and local adapters don't require a real API key
+        if model_name_lower in ["mock", "mock-ai", "local-sd", "local-stable-diffusion"]:
+            api_key = api_key or "not_needed"
 
         if not api_key:
             raise ValueError(
@@ -92,7 +95,9 @@ class VideoModelFactory:
             "stability-ai": "STABILITY_API_KEY",
             "stability": "STABILITY_API_KEY",
             "mock": None,
-            "mock-ai": None
+            "mock-ai": None,
+            "local-sd": None,
+            "local-stable-diffusion": None,
         }
 
         env_var = env_var_map.get(model_name)
