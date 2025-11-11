@@ -8,6 +8,7 @@ from .base import VideoModelInterface, GenerationStatus
 from .runway import RunwayGen3Adapter
 from .stability import StabilityAIAdapter
 from .mock import MockAIAdapter
+from .comfyui import ComfyUIAdapter
 from .factory import VideoModelFactory
 
 __all__ = [
@@ -16,5 +17,6 @@ __all__ = [
     "RunwayGen3Adapter",
     "StabilityAIAdapter",
     "MockAIAdapter",
+    "ComfyUIAdapter",
     "VideoModelFactory"
 ]

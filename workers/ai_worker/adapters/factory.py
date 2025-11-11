@@ -8,6 +8,7 @@ from .base import VideoModelInterface
 from .runway import RunwayGen3Adapter
 from .stability import StabilityAIAdapter
 from .mock import MockAIAdapter
+from .comfyui import ComfyUIAdapter
 
 
 class VideoModelFactory:
@@ -23,7 +24,9 @@ class VideoModelFactory:
         "stability-ai": StabilityAIAdapter,
         "stability": StabilityAIAdapter,  # Alias
         "mock-ai": MockAIAdapter,
-        "mock": MockAIAdapter  # Alias
+        "mock": MockAIAdapter,  # Alias
+        "comfyui": ComfyUIAdapter,
+        "comfy": ComfyUIAdapter  # Alias
     }
 
     @classmethod
@@ -92,7 +95,9 @@ class VideoModelFactory:
             "stability-ai": "STABILITY_API_KEY",
             "stability": "STABILITY_API_KEY",
             "mock": None,
-            "mock-ai": None
+            "mock-ai": None,
+            "comfyui": "COMFYUI_URL",
+            "comfy": "COMFYUI_URL"
         }
 
         env_var = env_var_map.get(model_name)
