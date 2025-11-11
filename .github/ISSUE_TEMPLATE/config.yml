@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📚 Documentation
+    url: https://github.com/QFiSouthaven/Jynco#readme
+    about: Read the documentation for setup and usage guides
+  - name: 💬 Discussions
+    url: https://github.com/QFiSouthaven/Jynco/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: 🔒 Security Issue
+    url: https://github.com/QFiSouthaven/Jynco/security/advisories/new
+    about: Report a security vulnerability privately

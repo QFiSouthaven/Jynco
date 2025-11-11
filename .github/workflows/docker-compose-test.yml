@@ -1,0 +1,72 @@
+name: Docker Compose Test
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'docker-compose.yml'
+      - 'backend/**'
+      - 'workers/**'
+      - 'frontend/**'
+      - '.github/workflows/docker-compose-test.yml'
+
+jobs:
+  docker-compose-test:
+    name: Test Full Stack with Docker Compose
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Create .env file
+      run: |
+        cp .env.example .env
+        # Set test credentials
+        sed -i 's/REPLACE_WITH_YOUR_AWS_ACCESS_KEY/test_key/g' .env
+        sed -i 's/REPLACE_WITH_YOUR_AWS_SECRET_KEY/test_secret/g' .env
+        sed -i 's/REPLACE_WITH_YOUR_RUNWAY_API_KEY/test_runway/g' .env
+        sed -i 's/REPLACE_WITH_YOUR_STABILITY_API_KEY/test_stability/g' .env
+
+    - name: Build and start services
+      run: |
+        docker-compose up -d --build
+
+    - name: Wait for services to be healthy
+      run: |
+        echo "Waiting for services to start..."
+        sleep 30
+
+        # Check postgres
+        docker-compose exec -T postgres pg_isready -U postgres || exit 1
+
+        # Check redis
+        docker-compose exec -T redis redis-cli ping || exit 1
+
+        # Check rabbitmq
+        docker-compose exec -T rabbitmq rabbitmq-diagnostics ping || exit 1
+
+    - name: Check backend health
+      run: |
+        for i in {1..10}; do
+          if curl -f http://localhost:8000/health; then
+            echo "Backend is healthy"
+            exit 0
+          fi
+          echo "Waiting for backend... ($i/10)"
+          sleep 5
+        done
+        echo "Backend failed to start"
+        exit 1
+
+    - name: View logs on failure
+      if: failure()
+      run: |
+        docker-compose logs backend
+        docker-compose logs ai_worker
+        docker-compose logs postgres
+
+    - name: Cleanup
+      if: always()
+      run: |
+        docker-compose down -v
