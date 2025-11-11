@@ -124,6 +124,12 @@ npm test
 - **Video:** FFMPEG
 - **AI Models:** Runway Gen-3, Stability AI
 
+## Community
+
+Join our Skool community to connect with other developers, share ideas, and get support:
+
+🌐 **[Join the I Love AI Community on Skool](https://www.skool.com/iloveai-1017)**
+
 ## Contributing
 
 Contributions are welcome! Please see individual system documentation for specific guidelines.
@@ -134,4 +140,4 @@ Contributions are welcome! Please see individual system documentation for specif
 
 ## Contact
 
-For questions or support, please open an issue in this repository.
+For questions or support, please open an issue in this repository or join our [Skool community](https://www.skool.com/iloveai-1017).
