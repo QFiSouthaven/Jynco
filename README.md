@@ -28,13 +28,13 @@ A timeline-aware, production-ready system for generating AI videos with intellig
 
 **Quick Start:**
 ```bash
-# Copy environment template
+# Option 1: Automated Setup (Recommended)
+./configure_keys.sh  # Interactive configuration wizard
+./launch.sh          # Launch all services
+
+# Option 2: Manual Setup
 cp .env.example .env
-
-# Edit .env with your credentials
-nano .env
-
-# Start all services
+nano .env            # Edit with your credentials
 docker-compose up -d
 
 # Access the application
@@ -42,6 +42,19 @@ docker-compose up -d
 # - Backend API: http://localhost:8000
 # - API Docs: http://localhost:8000/docs
 ```
+
+📘 **Documentation:**
+- **[Quick Start Guide](./QUICKSTART.md)** - Get running in 5 minutes
+- **[Launch Guide](./LAUNCH_GUIDE.md)** - Comprehensive launch instructions
+- **[API Keys Guide](./API_KEYS_GUIDE.md)** - How to obtain all required API keys
+- **[Security Best Practices](./SECURITY_BEST_PRACTICES.md)** - Production security guide
+- **[Docker Testing Guide](./DOCKER_TESTING_GUIDE.md)** - Testing and validation
+
+🛠️ **Configuration Tools:**
+- `./configure_keys.sh` - Interactive API key configuration wizard
+- `./validate_keys.py` - Validate all API keys and connections
+- `./generate_secret.sh` - Generate secure application secrets
+- `./launch.sh` - One-command launch script
 
 ### 2. Asset Package Foundry
 
