@@ -67,6 +67,7 @@ services:
       AWS_REGION: ${AWS_REGION:-us-east-1}
       SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production}
       ENVIRONMENT: ${ENVIRONMENT:-development}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
     ports:
       - "8000:8000"
     volumes:
@@ -79,6 +80,7 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    restart: unless-stopped
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   # AI Worker Service
@@ -109,21 +111,15 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-      # comfyui:
-      #   condition: service_healthy
-    deploy:
-      replicas: 2  # Scale workers horizontally
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
-        window: 120s
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+    restart: on-failure
+    # GPU support - comment out if you don't have NVIDIA GPU
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
     command: python worker.py
 
   # Composition Worker Service
@@ -152,7 +148,7 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-    restart: on-failure:3
+    restart: on-failure
     command: python worker.py
 
   # Frontend Web UI
@@ -161,9 +157,6 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.dev
     container_name: vf_frontend
-    environment:
-      VITE_API_URL: http://localhost:8000
-      VITE_WS_URL: ws://localhost:8000
     ports:
       - "5173:3000"
     volumes:
@@ -171,6 +164,7 @@ services:
       - /app/node_modules
     depends_on:
       - backend
+    restart: unless-stopped
     command: npm run dev
 
   # ComfyUI Service for AI Video/Image Generation (Local Hardware)
