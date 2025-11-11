@@ -144,7 +144,10 @@ class StoryboardAgent(BaseAgent):
                 clip.cacheKey = data["cacheKey"]
 
             # Update metadata timestamp
-            storyboard.metadata.updatedAt = datetime.utcnow()
+            if isinstance(storyboard.metadata, dict):
+                storyboard.metadata["updatedAt"] = datetime.utcnow().isoformat()
+            else:
+                storyboard.metadata.updatedAt = datetime.utcnow()
 
             await self._write_storyboard(storyboard)
 
@@ -181,7 +184,11 @@ class StoryboardAgent(BaseAgent):
             )
 
             storyboard.timeline.append(clip)
-            storyboard.metadata.updatedAt = datetime.utcnow()
+            # Update metadata timestamp
+            if isinstance(storyboard.metadata, dict):
+                storyboard.metadata["updatedAt"] = datetime.utcnow().isoformat()
+            else:
+                storyboard.metadata.updatedAt = datetime.utcnow()
 
             await self._write_storyboard(storyboard)
 
@@ -235,21 +242,56 @@ class StoryboardAgent(BaseAgent):
 
     def _serialize_storyboard(self, storyboard: Storyboard) -> Dict[str, Any]:
         """Convert Storyboard object to dictionary."""
-        # TODO: Implement proper serialization
+        def to_dict(obj):
+            """Convert object to dict, handling both dict and dataclass types."""
+            if obj is None:
+                return None
+            if isinstance(obj, dict):
+                return obj
+            if hasattr(obj, '__dict__'):
+                result = {}
+                for key, value in obj.__dict__.items():
+                    if hasattr(value, '__dict__') and not isinstance(value, (str, int, float, bool)):
+                        result[key] = to_dict(value)
+                    elif isinstance(value, list):
+                        result[key] = [to_dict(item) if hasattr(item, '__dict__') else item for item in value]
+                    else:
+                        result[key] = value
+                return result
+            return obj
+
         return {
             "version": storyboard.version,
             "projectId": storyboard.projectId,
-            "outputSettings": storyboard.outputSettings.__dict__ if storyboard.outputSettings else None,
+            "outputSettings": to_dict(storyboard.outputSettings),
             "timeline": [self._serialize_clip(clip) for clip in storyboard.timeline],
-            "layers": storyboard.layers.__dict__,
-            "metadata": storyboard.metadata.__dict__ if storyboard.metadata else {}
+            "layers": to_dict(storyboard.layers),
+            "metadata": to_dict(storyboard.metadata)
         }
 
     def _serialize_clip(self, clip: TimelineClip) -> Dict[str, Any]:
         """Convert TimelineClip to dictionary."""
+        def to_dict(obj):
+            """Convert object to dict, handling both dict and dataclass types."""
+            if obj is None:
+                return None
+            if isinstance(obj, dict):
+                return obj
+            if hasattr(obj, '__dict__'):
+                result = {}
+                for key, value in obj.__dict__.items():
+                    if hasattr(value, '__dict__') and not isinstance(value, (str, int, float, bool)):
+                        result[key] = to_dict(value)
+                    elif isinstance(value, list):
+                        result[key] = [to_dict(item) if hasattr(item, '__dict__') else item for item in value]
+                    else:
+                        result[key] = value
+                return result
+            return obj
+
         return {
             "clipId": clip.clipId,
-            "status": clip.status.value,
+            "status": clip.status.value if hasattr(clip.status, 'value') else clip.status,
             "jobId": clip.jobId,
             "errorMessage": clip.errorMessage,
             "sourceFile": clip.sourceFile,
@@ -258,5 +300,5 @@ class StoryboardAgent(BaseAgent):
             "duration": clip.duration,
             "startTime": clip.startTime,
             "cacheKey": clip.cacheKey,
-            "effects": clip.effects.__dict__ if clip.effects else {}
+            "effects": to_dict(clip.effects)
         }

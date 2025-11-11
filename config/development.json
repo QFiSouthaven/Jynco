@@ -1,0 +1,42 @@
+{
+  "environment": "development",
+  "cache": {
+    "type": "local",
+    "cache_dir": "./cache"
+  },
+  "job_queue": {
+    "type": "memory"
+  },
+  "agents": {
+    "architect": {
+      "max_retries": 3,
+      "retry_delay_base": 2.0,
+      "log_level": "INFO"
+    },
+    "storyboard": {
+      "storyboard_path": "./projects/{project_id}/storyboard.json",
+      "log_level": "INFO"
+    },
+    "motion": {
+      "ai_model": "mock",
+      "log_level": "INFO",
+      "mock_generation_time": 2.0
+    },
+    "render": {
+      "ffmpeg_path": "ffmpeg",
+      "output_dir": "./output",
+      "log_level": "INFO"
+    },
+    "quartermaster": {
+      "base_dir": "./projects",
+      "cache_dir": "./cache",
+      "temp_dir": "./temp",
+      "log_level": "INFO"
+    }
+  },
+  "logging": {
+    "level": "INFO",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    "file": "./logs/jynco.log"
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "environment": "production",
+  "cache": {
+    "type": "redis",
+    "redis_url": "redis://cache.example.com:6379",
+    "ttl": 86400
+  },
+  "job_queue": {
+    "type": "rabbitmq",
+    "rabbitmq_url": "amqp://queue.example.com",
+    "prefetch_count": 1
+  },
+  "agents": {
+    "architect": {
+      "max_retries": 5,
+      "retry_delay_base": 2.0,
+      "log_level": "WARNING"
+    },
+    "storyboard": {
+      "storyboard_path": "/var/lib/jynco/projects/{project_id}/storyboard.json",
+      "log_level": "WARNING"
+    },
+    "motion": {
+      "ai_model": "runway_gen3",
+      "api_key": "${RUNWAY_API_KEY}",
+      "log_level": "WARNING"
+    },
+    "render": {
+      "ffmpeg_path": "/usr/bin/ffmpeg",
+      "output_dir": "/var/lib/jynco/output",
+      "log_level": "WARNING",
+      "use_gpu": true
+    },
+    "quartermaster": {
+      "base_dir": "/var/lib/jynco/projects",
+      "cache_dir": "/var/cache/jynco",
+      "temp_dir": "/tmp/jynco",
+      "log_level": "WARNING",
+      "s3_bucket": "jynco-assets",
+      "use_s3": true
+    }
+  },
+  "logging": {
+    "level": "WARNING",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s - %(pathname)s:%(lineno)d",
+    "file": "/var/log/jynco/jynco.log",
+    "max_bytes": 10485760,
+    "backup_count": 5
+  },
+  "monitoring": {
+    "enabled": true,
+    "metrics_port": 9090,
+    "health_check_port": 8080
+  }
+}
