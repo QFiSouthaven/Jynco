@@ -85,7 +85,6 @@ services:
     build:
       context: ./workers/ai_worker
       dockerfile: Dockerfile
-    container_name: vf_ai_worker
     environment:
       DATABASE_URL: postgresql://postgres:password@postgres:5432/videofoundry
       REDIS_URL: redis://redis:6379/0
@@ -96,6 +95,9 @@ services:
       AWS_REGION: ${AWS_REGION:-us-east-1}
       RUNWAY_API_KEY: ${RUNWAY_API_KEY}
       STABILITY_API_KEY: ${STABILITY_API_KEY}
+      AI_MODEL: ${AI_MODEL:-mock-ai}
+      USE_LOCAL_STORAGE: ${USE_LOCAL_STORAGE:-true}
+      LOCAL_STORAGE_PATH: ${LOCAL_STORAGE_PATH:-/tmp/worker/videos}
     volumes:
       - ./workers/ai_worker:/app
       - worker_temp:/tmp/worker
@@ -107,7 +109,7 @@ services:
       rabbitmq:
         condition: service_healthy
     deploy:
-      replicas: 2  # Scale workers horizontally
+      replicas: 1  # Scale workers horizontally (can increase when scaling)
     command: python worker.py
 
   # Composition Worker Service
@@ -124,6 +126,8 @@ services:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       AWS_REGION: ${AWS_REGION:-us-east-1}
+      USE_LOCAL_STORAGE: ${USE_LOCAL_STORAGE:-true}
+      LOCAL_STORAGE_PATH: ${LOCAL_STORAGE_PATH:-/tmp/composition/videos}
     volumes:
       - ./workers/composition_worker:/app
       - composition_temp:/tmp/composition

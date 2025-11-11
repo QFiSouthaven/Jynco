@@ -15,7 +15,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from backend.config import get_db_context
 from backend.models import Segment
 from backend.models.segment import SegmentStatus
-from backend.services import RabbitMQClient, RedisClient, S3Client
+from backend.services import RabbitMQClient, RedisClient
+from backend.services.storage_factory import create_storage_client
 from adapters import VideoModelFactory
 
 logging.basicConfig(
@@ -34,10 +35,12 @@ class AIWorker:
         """Initialize the AI worker."""
         self.rabbitmq = RabbitMQClient()
         self.redis = RedisClient()
-        self.s3 = S3Client()
+        self.storage = create_storage_client()
         self.queue_name = os.getenv("SEGMENT_QUEUE_NAME", "segment_generation")
 
-        logger.info("AI Worker initialized")
+        use_local = os.getenv("USE_LOCAL_STORAGE", "false").lower() in ("true", "1", "yes")
+        storage_type = "Local Storage" if use_local else "S3"
+        logger.info(f"AI Worker initialized with {storage_type}")
 
     async def process_segment_task(self, message: dict):
         """
@@ -83,8 +86,8 @@ class AIWorker:
             result = await self._poll_for_completion(adapter, external_job_id)
 
             if result.status.value == "completed" and result.video_url:
-                # Download video and upload to S3
-                s3_url = await self._upload_to_s3(
+                # Download video and upload to storage
+                storage_url = await self._upload_to_storage(
                     video_url=result.video_url,
                     segment_id=segment_id,
                     render_job_id=render_job_id
@@ -95,7 +98,7 @@ class AIWorker:
                     segment = db.query(Segment).filter(Segment.id == segment_id).first()
                     if segment:
                         segment.status = SegmentStatus.COMPLETED
-                        segment.s3_asset_url = s3_url
+                        segment.s3_asset_url = storage_url  # Note: field name kept for compatibility
                         db.commit()
 
                 # Update Redis
@@ -114,7 +117,7 @@ class AIWorker:
                     render_job_id=render_job_id
                 )
 
-                logger.info(f"Segment {segment_id} completed successfully. S3 URL: {s3_url}")
+                logger.info(f"Segment {segment_id} completed successfully. Storage URL: {storage_url}")
 
             else:
                 # Handle failure
@@ -174,9 +177,9 @@ class AIWorker:
         # Timeout
         raise TimeoutError(f"Generation timed out after {max_attempts} seconds")
 
-    async def _upload_to_s3(self, video_url: str, segment_id: UUID, render_job_id: UUID) -> str:
+    async def _upload_to_storage(self, video_url: str, segment_id: UUID, render_job_id: UUID) -> str:
         """
-        Download video from AI service and upload to S3.
+        Download video from AI service and upload to storage (S3 or local).
 
         Args:
             video_url: URL of the generated video
@@ -184,7 +187,7 @@ class AIWorker:
             render_job_id: Render job UUID
 
         Returns:
-            S3 URL of the uploaded video
+            Storage URL of the uploaded video
         """
         import httpx
         import tempfile
@@ -207,18 +210,18 @@ class AIWorker:
                     tmp_path = tmp.name
 
         try:
-            # Generate S3 key
+            # Generate storage key
             # Get project_id from database
             with get_db_context() as db:
                 segment = db.query(Segment).filter(Segment.id == segment_id).first()
                 project_id = segment.project_id if segment else segment_id
 
-            s3_key = self.s3.generate_segment_key(project_id, segment_id)
+            storage_key = self.storage.generate_segment_key(project_id, segment_id)
 
-            # Upload to S3
-            s3_url = self.s3.upload_file(tmp_path, s3_key, content_type="video/mp4")
+            # Upload to storage
+            storage_url = self.storage.upload_file(tmp_path, storage_key, content_type="video/mp4")
 
-            return s3_url
+            return storage_url
 
         finally:
             # Clean up temp file
