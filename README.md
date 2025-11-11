@@ -28,20 +28,29 @@ A timeline-aware, production-ready system for generating AI videos with intellig
 
 **Quick Start:**
 ```bash
-# Copy environment template
-cp .env.example .env
+# Windows
+start.bat
 
-# Edit .env with your credentials
-nano .env
-
-# Start all services
-docker-compose up -d
+# Linux/Mac
+./start.sh
 
 # Access the application
-# - Frontend: http://localhost:3000
-# - Backend API: http://localhost:8000
-# - API Docs: http://localhost:8000/docs
+# - Frontend UI:     http://localhost:5173
+# - Backend API:     http://localhost:8000
+# - API Docs:        http://localhost:8000/docs
+# - RabbitMQ Console: http://localhost:15672 (guest/guest)
 ```
+
+**Documentation:**
+- 📘 [Quick Start Guide](./QUICKSTART.md) - Get up and running in 5 minutes
+- 📖 [User Guide](./USER_GUIDE.md) - Complete guide to creating videos
+- 🖼️ [Visual Walkthrough](./VISUAL_WALKTHROUGH.md) - Step-by-step with screenshots
+- 🧪 [Test Script](./test_workflow.py) - Automated workflow demonstration
+
+**GPU Acceleration:**
+- Configured for NVIDIA GPUs with CUDA support
+- 2 parallel AI workers for concurrent segment generation
+- Local hardware mode enabled by default (no cloud API keys required)
 
 ### 2. Asset Package Foundry
 

@@ -8,7 +8,11 @@ from contextlib import contextmanager
 import os
 from typing import Generator
 
-from models.base import Base
+# Handle imports for both backend container (/app) and worker containers (/app/backend)
+try:
+    from backend.models.base import Base
+except ModuleNotFoundError:
+    from models.base import Base
 
 # Database URL from environment
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/videofoundry")

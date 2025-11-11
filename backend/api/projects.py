@@ -7,7 +7,10 @@ from typing import List
 from uuid import UUID
 
 from config import get_db
-from models import Project
+try:
+    from backend.models import Project
+except ModuleNotFoundError:
+    from models import Project
 from schemas import ProjectCreate, ProjectUpdate, ProjectResponse
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])

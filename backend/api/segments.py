@@ -7,8 +7,12 @@ from typing import List
 from uuid import UUID
 
 from config import get_db
-from models import Segment, Project
-from models.segment import SegmentStatus
+try:
+    from backend.models import Segment, Project
+    from backend.models.segment import SegmentStatus
+except ModuleNotFoundError:
+    from models import Segment, Project
+    from models.segment import SegmentStatus
 from schemas import SegmentCreate, SegmentUpdate, SegmentResponse
 
 router = APIRouter(prefix="/api", tags=["segments"])

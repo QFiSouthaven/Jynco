@@ -6,11 +6,19 @@ from typing import List
 from uuid import UUID
 import logging
 
-from models import Project, Segment, RenderJob
-from models.segment import SegmentStatus
-from models.render_job import RenderJobStatus
-from services.rabbitmq_client import RabbitMQClient
-from services.redis_client import RedisClient
+# Handle imports for both backend container (/app) and worker containers (/app/backend)
+try:
+    from backend.models import Project, Segment, RenderJob
+    from backend.models.segment import SegmentStatus
+    from backend.models.render_job import RenderJobStatus
+    from backend.services.rabbitmq_client import RabbitMQClient
+    from backend.services.redis_client import RedisClient
+except ModuleNotFoundError:
+    from models import Project, Segment, RenderJob
+    from models.segment import SegmentStatus
+    from models.render_job import RenderJobStatus
+    from services.rabbitmq_client import RabbitMQClient
+    from services.redis_client import RedisClient
 
 logger = logging.getLogger(__name__)
 

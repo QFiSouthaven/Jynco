@@ -1,6 +1,12 @@
 """
 Main FastAPI application for Video Foundry Backend.
 """
+import sys
+from pathlib import Path
+
+# Add parent directory to Python path so backend.models imports work
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse

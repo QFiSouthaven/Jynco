@@ -118,6 +118,12 @@ services:
         delay: 5s
         max_attempts: 3
         window: 120s
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     command: python worker.py
 
   # Composition Worker Service

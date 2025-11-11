@@ -9,9 +9,13 @@ import asyncio
 import json
 
 from config import get_db
-from models import RenderJob
+try:
+    from backend.models import RenderJob
+    from backend.services import RabbitMQClient, RedisClient, RenderOrchestrator
+except ModuleNotFoundError:
+    from models import RenderJob
+    from services import RabbitMQClient, RedisClient, RenderOrchestrator
 from schemas import RenderJobCreate, RenderJobResponse
-from services import RabbitMQClient, RedisClient, RenderOrchestrator
 
 router = APIRouter(prefix="/api", tags=["render"])
 
