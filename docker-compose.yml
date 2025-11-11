@@ -165,6 +165,18 @@ services:
     restart: unless-stopped
     command: npm run dev
 
+  # Portainer - Docker WebUI Management
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: vf_portainer
+    ports:
+      - "9000:9000"
+      - "9443:9443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    restart: unless-stopped
+
   # ComfyUI Service for AI Video/Image Generation (Local Hardware)
   # Note: ComfyUI needs to be set up separately or use a custom build
   # Commented out for now - workers will fall back to mock adapter
@@ -206,6 +218,7 @@ volumes:
   comfyui_output:
   comfyui_input:
   local_videos:  # Local video storage for generated content
+  portainer_data:
 
 networks:
   default:
