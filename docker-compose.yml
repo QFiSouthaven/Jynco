@@ -179,25 +179,27 @@ services:
 
   # ComfyUI Service for AI Video/Image Generation (Local Hardware)
   comfyui:
-    image: yanwk/comfyui-boot:latest
+    build:
+      context: ./comfyui
+      dockerfile: Dockerfile
     container_name: vf_comfyui
     ports:
       - "8188:8188"
     volumes:
-      - comfyui_models:/home/runner/models
-      - comfyui_output:/home/runner/ComfyUI/output
-      - comfyui_input:/home/runner/ComfyUI/input
+      - comfyui_models:/app/models
+      - comfyui_output:/app/output
+      - comfyui_input:/app/input
       - local_videos:/videos  # Local video storage
     environment:
       - CLI_ARGS=--listen 0.0.0.0 --port 8188
-    # Uncomment for GPU support (NVIDIA)
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: all
-    #           capabilities: [gpu]
+    # GPU support enabled for NVIDIA
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8188"]
