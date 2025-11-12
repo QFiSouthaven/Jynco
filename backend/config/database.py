@@ -13,10 +13,8 @@ import uuid as uuid_lib
 # Handle imports for both backend container (/app) and worker containers (/app/backend)
 try:
     from backend.models.base import Base
-    from backend.models.user import User
 except ModuleNotFoundError:
     from models.base import Base
-    from models.user import User
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -92,6 +90,12 @@ def create_default_user():
     Create a default user for development if it doesn't exist.
     This allows project creation without authentication.
     """
+    # Import User model here to avoid circular imports
+    try:
+        from backend.models.user import User
+    except ModuleNotFoundError:
+        from models.user import User
+
     db = SessionLocal()
     try:
         # Check if default user already exists
