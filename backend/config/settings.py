@@ -2,8 +2,9 @@
 Application settings using pydantic-settings.
 """
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 from functools import lru_cache
-from typing import Optional
+from typing import Optional, Union
 
 
 class Settings(BaseSettings):
@@ -38,7 +39,23 @@ class Settings(BaseSettings):
     stability_api_key: Optional[str] = None
 
     # CORS
-    cors_origins: list[str] = ["http://localhost:3000", "http://localhost:5173"]
+    cors_origins: Union[str, list[str]] = ["http://localhost:3000", "http://localhost:5173"]
+
+    @field_validator('cors_origins', mode='before')
+    @classmethod
+    def parse_cors_origins(cls, v):
+        """Parse CORS origins from comma-separated string or list."""
+        if v is None:
+            return ["http://localhost:3000", "http://localhost:5173"]
+        if isinstance(v, str):
+            # Handle empty string
+            if not v.strip():
+                return ["http://localhost:3000", "http://localhost:5173"]
+            return [origin.strip() for origin in v.split(',') if origin.strip()]
+        if isinstance(v, list):
+            return v
+        # Fallback to default
+        return ["http://localhost:3000", "http://localhost:5173"]
 
     # JWT
     jwt_algorithm: str = "HS256"

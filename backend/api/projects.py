@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 
-from config import get_db
+from config import get_db, get_default_user_id
 try:
     from backend.models import Project
 except ModuleNotFoundError:
@@ -25,9 +25,8 @@ def create_project(
     Create a new video project.
     """
     # TODO: Add authentication and get user_id from auth
-    # For now, using a placeholder user_id
-    from uuid import uuid4
-    user_id = uuid4()  # Replace with actual user authentication
+    # For now, using the default development user
+    user_id = get_default_user_id()
 
     project = Project(
         user_id=user_id,

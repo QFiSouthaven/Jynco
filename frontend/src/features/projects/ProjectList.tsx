@@ -8,6 +8,7 @@ export default function ProjectList() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [projectName, setProjectName] = useState('')
   const [projectDescription, setProjectDescription] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
@@ -23,7 +24,13 @@ export default function ProjectList() {
       setShowCreateModal(false)
       setProjectName('')
       setProjectDescription('')
+      setError(null)
       navigate(`/projects/${newProject.id}`)
+    },
+    onError: (error: any) => {
+      console.error('Failed to create project:', error)
+      const errorMessage = error.response?.data?.detail || error.message || 'Unknown error occurred'
+      setError(errorMessage)
     },
   })
 
@@ -35,8 +42,20 @@ export default function ProjectList() {
   })
 
   const handleCreate = () => {
+    console.log('handleCreate called with:', { name: projectName, description: projectDescription })
+    setError(null)
     if (projectName.trim()) {
       createMutation.mutate({ name: projectName, description: projectDescription })
+    } else {
+      console.warn('Project name is empty, not creating')
+      setError('Please enter a project name')
+    }
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleCreate()
     }
   }
 
@@ -49,7 +68,12 @@ export default function ProjectList() {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">My Projects</h1>
         <button
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => {
+            setShowCreateModal(true)
+            setError(null)
+            setProjectName('')
+            setProjectDescription('')
+          }}
           className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg transition"
         >
           <FaPlus />
@@ -100,14 +124,21 @@ export default function ProjectList() {
           <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full">
             <h2 className="text-2xl font-bold mb-4">Create New Project</h2>
             <div className="space-y-4">
+              {error && (
+                <div className="bg-red-900 bg-opacity-30 border border-red-500 text-red-300 px-4 py-3 rounded">
+                  {error}
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium mb-2">Project Name</label>
                 <input
                   type="text"
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
+                  onKeyPress={handleKeyPress}
                   className="w-full bg-gray-700 border border-gray-600 rounded px-4 py-2"
                   placeholder="My Awesome Video"
+                  autoFocus
                 />
               </div>
               <div>
@@ -122,13 +153,15 @@ export default function ProjectList() {
               </div>
               <div className="flex space-x-3">
                 <button
+                  type="button"
                   onClick={handleCreate}
                   disabled={!projectName.trim() || createMutation.isPending}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded disabled:opacity-50"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {createMutation.isPending ? 'Creating...' : 'Create'}
                 </button>
                 <button
+                  type="button"
                   onClick={() => setShowCreateModal(false)}
                   className="flex-1 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded"
                 >
