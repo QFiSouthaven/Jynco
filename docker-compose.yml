@@ -174,35 +174,33 @@ services:
     command: npm run dev
 
   # ComfyUI Service for AI Video/Image Generation (Local Hardware)
-  # Note: ComfyUI needs to be set up separately or use a custom build
-  # Commented out for now - workers will fall back to mock adapter
-  # comfyui:
-  #   image: python:3.11-slim  # Placeholder - need custom ComfyUI setup
-  #   container_name: vf_comfyui
-  #   ports:
-  #     - "8188:8188"
-  #   volumes:
-  #     - comfyui_models:/models
-  #     - comfyui_output:/output
-  #     - comfyui_input:/input
-  #     - local_videos:/videos  # Local video storage
-  #   environment:
-  #     - CLI_ARGS=--listen 0.0.0.0 --port 8188
-  #   # Uncomment for GPU support (NVIDIA)
-  #   # deploy:
-  #   #   resources:
-  #   #     reservations:
-  #   #       devices:
-  #   #         - driver: nvidia
-  #   #           count: all
-  #   #           capabilities: [gpu]
-  #   restart: unless-stopped
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:8188"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 5
-  #     start_period: 60s
+  comfyui:
+    image: yanwk/comfyui-boot:latest
+    container_name: vf_comfyui
+    ports:
+      - "8188:8188"
+    volumes:
+      - comfyui_models:/home/runner/models
+      - comfyui_output:/home/runner/ComfyUI/output
+      - comfyui_input:/home/runner/ComfyUI/input
+      - local_videos:/videos  # Local video storage
+    environment:
+      - CLI_ARGS=--listen 0.0.0.0 --port 8188
+    # Uncomment for GPU support (NVIDIA)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8188"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
 volumes:
   postgres_data:
