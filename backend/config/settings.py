@@ -2,6 +2,7 @@
 Application settings using pydantic-settings.
 """
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 from functools import lru_cache
 from typing import Optional
 
@@ -39,6 +40,14 @@ class Settings(BaseSettings):
 
     # CORS
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:5173"]
+
+    @field_validator('cors_origins', mode='before')
+    @classmethod
+    def parse_cors_origins(cls, v):
+        """Parse CORS origins from comma-separated string or list."""
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(',')]
+        return v
 
     # JWT
     jwt_algorithm: str = "HS256"
