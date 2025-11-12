@@ -7,7 +7,6 @@ from sqlalchemy.pool import NullPool
 from contextlib import contextmanager
 import os
 from typing import Generator
-from passlib.context import CryptContext
 import uuid as uuid_lib
 
 # Handle imports for both backend container (/app) and worker containers (/app/backend)
@@ -15,9 +14,6 @@ try:
     from backend.models.base import Base
 except ModuleNotFoundError:
     from models.base import Base
-
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Database URL from environment
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/videofoundry")
@@ -90,11 +86,14 @@ def create_default_user():
     Create a default user for development if it doesn't exist.
     This allows project creation without authentication.
     """
-    # Import User model here to avoid circular imports
+    # Import dependencies here to avoid circular imports and missing deps in workers
     try:
         from backend.models.user import User
     except ModuleNotFoundError:
         from models.user import User
+
+    from passlib.context import CryptContext
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
     db = SessionLocal()
     try:
