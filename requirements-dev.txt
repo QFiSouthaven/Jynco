@@ -1,0 +1,48 @@
+# Development tools for Video Foundry
+# Install with: pip install -r requirements-dev.txt
+
+# Code Quality & Linting
+ruff>=0.1.9                 # Fast Python linter and formatter (replaces black, isort, flake8)
+mypy>=1.8.0                 # Static type checking
+types-all>=1.0.0            # Type stubs for mypy
+
+# Security
+bandit>=1.7.6               # Security linter for Python
+safety>=2.3.5               # Check dependencies for vulnerabilities
+detect-secrets>=1.4.0       # Prevent secrets from being committed
+
+# Testing
+pytest>=7.4.3               # Testing framework
+pytest-cov>=4.1.0           # Coverage plugin
+pytest-xdist>=3.5.0         # Parallel test execution
+pytest-asyncio>=0.21.1      # Async test support
+pytest-mock>=3.12.0         # Mocking utilities
+pytest-watch>=4.2.0         # Watch mode for tests
+factory-boy>=3.3.0          # Test data factories
+faker>=20.1.0               # Generate fake data for tests
+
+# Git Hooks
+pre-commit>=3.6.0           # Git pre-commit hooks framework
+
+# Performance Profiling
+py-spy>=0.3.14              # Python profiler
+memory-profiler>=0.61.0     # Memory usage profiler
+
+# HTTP Testing
+httpx>=0.25.2               # Async HTTP client
+responses>=0.24.1           # Mock HTTP responses
+
+# Database Testing
+pytest-postgresql>=5.0.0    # PostgreSQL fixtures for tests
+
+# Documentation
+mkdocs>=1.5.3               # Documentation generator
+mkdocs-material>=9.5.3      # Material theme for MkDocs
+mkdocstrings>=0.24.0        # Auto-generate docs from docstrings
+mkdocstrings-python>=1.7.5  # Python support for mkdocstrings
+
+# Development Utilities
+ipython>=8.18.1             # Better Python REPL
+ipdb>=0.13.13               # IPython debugger
+python-dotenv>=1.0.0        # Load .env files
+rich>=13.7.0                # Beautiful terminal output
