@@ -4,6 +4,7 @@ Pydantic schemas for request/response validation.
 from .project import ProjectCreate, ProjectUpdate, ProjectResponse
 from .segment import SegmentCreate, SegmentUpdate, SegmentResponse
 from .render_job import RenderJobCreate, RenderJobResponse, RenderJobProgress
+from .workflow import WorkflowCreate, WorkflowUpdate, WorkflowResponse
 
 __all__ = [
     "ProjectCreate",
@@ -14,5 +15,8 @@ __all__ = [
     "SegmentResponse",
     "RenderJobCreate",
     "RenderJobResponse",
-    "RenderJobProgress"
+    "RenderJobProgress",
+    "WorkflowCreate",
+    "WorkflowUpdate",
+    "WorkflowResponse"
 ]

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
-import { FaVideo, FaProjectDiagram, FaTachometerAlt } from 'react-icons/fa'
+import { FaVideo, FaProjectDiagram, FaTachometerAlt, FaBook } from 'react-icons/fa'
+import ComfyUIStatus from './ComfyUIStatus'
 
 export default function Header() {
   return (
@@ -11,22 +12,33 @@ export default function Header() {
             <h1 className="text-2xl font-bold text-white">Video Foundry</h1>
           </Link>
 
-          <nav className="flex space-x-6">
-            <Link
-              to="/"
-              className="flex items-center space-x-2 text-gray-300 hover:text-white transition"
-            >
-              <FaProjectDiagram />
-              <span>Projects</span>
-            </Link>
-            <Link
-              to="/dashboard"
-              className="flex items-center space-x-2 text-gray-300 hover:text-white transition"
-            >
-              <FaTachometerAlt />
-              <span>Dashboard</span>
-            </Link>
-          </nav>
+          <div className="flex items-center space-x-6">
+            <nav className="flex space-x-6">
+              <Link
+                to="/"
+                className="flex items-center space-x-2 text-gray-300 hover:text-white transition"
+              >
+                <FaProjectDiagram />
+                <span>Projects</span>
+              </Link>
+              <Link
+                to="/workflows"
+                className="flex items-center space-x-2 text-gray-300 hover:text-white transition"
+              >
+                <FaBook />
+                <span>Workflows</span>
+              </Link>
+              <Link
+                to="/dashboard"
+                className="flex items-center space-x-2 text-gray-300 hover:text-white transition"
+              >
+                <FaTachometerAlt />
+                <span>Dashboard</span>
+              </Link>
+            </nav>
+
+            <ComfyUIStatus variant="compact" />
+          </div>
         </div>
       </div>
     </header>

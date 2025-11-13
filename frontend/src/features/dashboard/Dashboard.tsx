@@ -1,9 +1,18 @@
 import { useQuery } from '@tanstack/react-query'
 import { projectsApi } from '../../api/projects'
-import { FaSpinner, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa'
+import { FaSpinner, FaCheckCircle, FaExclamationCircle, FaPlay, FaDownload } from 'react-icons/fa'
+import { useState } from 'react'
 import clsx from 'clsx'
+import VideoModal from '../../components/VideoModal'
+import ComfyUIStatus from '../../components/ComfyUIStatus'
 
 export default function Dashboard() {
+  const [selectedVideo, setSelectedVideo] = useState<{
+    url: string
+    title: string
+    description: string
+  } | null>(null)
+
   const { data: projects, isLoading } = useQuery({
     queryKey: ['projects'],
     queryFn: projectsApi.listProjects,
@@ -41,7 +50,7 @@ export default function Dashboard() {
     <div>
       <h1 className="text-3xl font-bold mb-8">Render Dashboard</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="bg-blue-900 bg-opacity-30 border border-blue-500 rounded-lg p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -71,6 +80,8 @@ export default function Dashboard() {
             <FaExclamationCircle className="text-4xl text-red-500" />
           </div>
         </div>
+
+        <ComfyUIStatus variant="full" />
       </div>
 
       <div className="bg-gray-800 rounded-lg p-6">
@@ -114,12 +125,47 @@ export default function Dashboard() {
                     <p className="text-sm text-gray-400 truncate">
                       {item.segment.prompt}
                     </p>
+                    {item.segment.s3_asset_url && (
+                      <div className="flex items-center space-x-2 mt-2">
+                        <button
+                          onClick={() => setSelectedVideo({
+                            url: item.segment.s3_asset_url!,
+                            title: `${item.projectName} - Segment #${item.segment.order_index + 1}`,
+                            description: item.segment.prompt,
+                          })}
+                          className="flex items-center space-x-1 text-xs text-blue-400 hover:text-blue-300 transition"
+                        >
+                          <FaPlay />
+                          <span>Preview</span>
+                        </button>
+                        <a
+                          href={item.segment.s3_asset_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center space-x-1 text-xs text-gray-500 hover:text-gray-400 transition"
+                        >
+                          <FaDownload />
+                          <span>Download</span>
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
           </div>
         )}
       </div>
+
+      {/* Video Modal */}
+      {selectedVideo && (
+        <VideoModal
+          isOpen={!!selectedVideo}
+          onClose={() => setSelectedVideo(null)}
+          videoUrl={selectedVideo.url}
+          title={selectedVideo.title}
+          description={selectedVideo.description}
+        />
+      )}
     </div>
   )
 }

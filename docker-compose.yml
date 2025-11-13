@@ -65,7 +65,7 @@ services:
       AWS_REGION: ${AWS_REGION:-us-east-1}
       SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production}
       ENVIRONMENT: ${ENVIRONMENT:-development}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
     ports:
       - "8000:8000"
     volumes:
@@ -156,14 +156,16 @@ services:
       dockerfile: Dockerfile.dev
     container_name: vf_frontend
     ports:
-      - "3000:3000"
+      - "5173:5173"
+    environment:
+      - VITE_PORT=5173
     volumes:
       - ./frontend:/app
       - /app/node_modules
     depends_on:
       - backend
     restart: unless-stopped
-    command: npm run dev
+    command: npm run dev -- --host 0.0.0.0 --port 5173
 
   # Portainer - Docker WebUI Management
   portainer:

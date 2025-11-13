@@ -67,6 +67,8 @@ def init_db():
     Base.metadata.create_all(bind=engine)
     # Create default user for development if it doesn't exist
     create_default_user()
+    # Create default workflows
+    create_default_workflows()
 
 
 def drop_db():
@@ -136,3 +138,79 @@ def get_default_user_id():
     This should be used in place of authentication until auth is implemented.
     """
     return DEFAULT_USER_ID
+
+
+def create_default_workflows():
+    """
+    Create default ComfyUI workflows if they don't exist.
+    This populates the workflow library with the two basic workflows.
+    """
+    import json
+    from pathlib import Path
+
+    # Import dependencies here to avoid circular imports
+    try:
+        from backend.models.workflow import Workflow
+    except ModuleNotFoundError:
+        from models.workflow import Workflow
+
+    db = SessionLocal()
+    try:
+        # Check if default workflows already exist
+        existing_defaults = db.query(Workflow).filter(Workflow.is_default == True).count()
+        if existing_defaults > 0:
+            print(f"Default workflows already exist ({existing_defaults} found)")
+            return
+
+        # Path to workflow files
+        workflows_dir = Path(__file__).parent.parent.parent / "workflows"
+
+        # Define default workflows to create
+        default_workflows = [
+            {
+                "name": "Text to Video (Basic)",
+                "description": "Basic text-to-video workflow using AnimateDiff with SDXL. Generates 16 frames at 512x512 resolution.",
+                "category": "text-to-video",
+                "file": "text-to-video-basic.json"
+            },
+            {
+                "name": "Image to Video (Basic)",
+                "description": "Basic image-to-video workflow using Stable Video Diffusion (SVD). Generates smooth video from a single image at 1024x576 resolution.",
+                "category": "image-to-video",
+                "file": "image-to-video-basic.json"
+            }
+        ]
+
+        # Create each workflow
+        for workflow_def in default_workflows:
+            workflow_file = workflows_dir / workflow_def["file"]
+
+            if not workflow_file.exists():
+                print(f"Warning: Workflow file not found: {workflow_file}")
+                continue
+
+            # Read the workflow JSON
+            with open(workflow_file, 'r') as f:
+                workflow_json = json.load(f)
+
+            # Create the workflow record
+            workflow = Workflow(
+                user_id=DEFAULT_USER_ID,
+                name=workflow_def["name"],
+                description=workflow_def["description"],
+                category=workflow_def["category"],
+                workflow_json=workflow_json,
+                is_default=True
+            )
+            db.add(workflow)
+            print(f"Created default workflow: {workflow_def['name']}")
+
+        db.commit()
+        print(f"Successfully created {len(default_workflows)} default workflows")
+
+    except Exception as e:
+        db.rollback()
+        print(f"Error creating default workflows: {e}")
+        # Don't raise - this is not critical for app startup
+    finally:
+        db.close()

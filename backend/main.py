@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 import logging
 
 from config import init_db, get_settings
-from api import projects, segments, render
+from api import projects, segments, render, health, workflows
 
 # Configure logging
 logging.basicConfig(
@@ -71,6 +71,8 @@ async def health_check():
 app.include_router(projects.router)
 app.include_router(segments.router)
 app.include_router(render.router)
+app.include_router(health.router)
+app.include_router(workflows.router)
 
 
 @app.exception_handler(Exception)
