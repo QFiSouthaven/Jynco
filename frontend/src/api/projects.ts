@@ -10,15 +10,26 @@ export interface Project {
   segments: Segment[]
 }
 
+export interface ModelParams {
+  model: 'comfyui' | 'runway-gen3' | 'stability-ai' | 'mock-ai'
+  duration?: number
+  width?: number
+  height?: number
+  aspect_ratio?: string
+  workflow?: Record<string, any>
+  [key: string]: any
+}
+
 export interface Segment {
   id: string
   project_id: string
   order_index: number
   prompt: string
-  model_params: Record<string, any>
+  model_params: ModelParams
   status: 'pending' | 'generating' | 'completed' | 'failed'
   s3_asset_url?: string
   error_message?: string
+  error_code?: string
   created_at: string
   updated_at: string
 }
@@ -34,6 +45,13 @@ export interface RenderJob {
   error_message?: string
   created_at: string
   updated_at: string
+}
+
+export interface ComfyUIHealthStatus {
+  status: 'online' | 'offline' | 'error'
+  url?: string
+  version?: string
+  error?: string
 }
 
 export const projectsApi = {
@@ -63,7 +81,7 @@ export const projectsApi = {
   },
 
   // Segments
-  createSegment: async (projectId: string, data: { order_index: number; prompt: string; model_params: Record<string, any> }): Promise<Segment> => {
+  createSegment: async (projectId: string, data: { order_index: number; prompt: string; model_params: ModelParams }): Promise<Segment> => {
     const response = await apiClient.post(`/api/projects/${projectId}/segments`, data)
     return response.data
   },
@@ -75,6 +93,11 @@ export const projectsApi = {
 
   deleteSegment: async (segmentId: string): Promise<void> => {
     await apiClient.delete(`/api/segments/${segmentId}`)
+  },
+
+  retrySegment: async (segmentId: string): Promise<Segment> => {
+    const response = await apiClient.post(`/api/segments/${segmentId}/retry`)
+    return response.data
   },
 
   // Render Jobs
@@ -91,5 +114,22 @@ export const projectsApi = {
   listRenderJobs: async (projectId: string): Promise<RenderJob[]> => {
     const response = await apiClient.get(`/api/projects/${projectId}/render-jobs`)
     return response.data
+  },
+
+  // Health Check
+  checkComfyUIHealth: async (): Promise<ComfyUIHealthStatus> => {
+    try {
+      const response = await apiClient.get('/api/health/comfyui')
+      return {
+        status: 'online',
+        url: response.data.url,
+        version: response.data.version,
+      }
+    } catch (error: any) {
+      return {
+        status: error.response?.status === 503 ? 'offline' : 'error',
+        error: error.response?.data?.detail || error.message || 'Failed to connect',
+      }
+    }
   },
 }

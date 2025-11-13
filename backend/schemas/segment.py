@@ -33,6 +33,7 @@ class SegmentResponse(SegmentBase):
     status: str
     s3_asset_url: Optional[str] = None
     error_message: Optional[str] = None
+    error_code: Optional[str] = None
     external_job_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
