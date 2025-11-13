@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from backend.config import get_db_context
 from backend.models import RenderJob, Segment
 from backend.models.render_job import RenderJobStatus
-from backend.services import RabbitMQClient, RedisClient, S3Client
+from backend.services import RabbitMQClient, RedisClient, S3Client, LocalStorageClient
 import pika.exceptions
 
 logging.basicConfig(
@@ -38,7 +38,18 @@ class CompositionWorker:
         """Initialize the composition worker."""
         self.rabbitmq = RabbitMQClient()
         self.redis = RedisClient()
-        self.s3 = S3Client()
+
+        # Use local storage if AWS credentials are not configured
+        aws_key = os.getenv("AWS_ACCESS_KEY_ID", "")
+        use_local_storage = not aws_key or aws_key.strip() == ""
+
+        if use_local_storage:
+            self.storage = LocalStorageClient()
+            logger.info("Using LocalStorageClient (AWS credentials not configured)")
+        else:
+            self.storage = S3Client()
+            logger.info("Using S3Client")
+
         self.queue_name = os.getenv("COMPOSITION_QUEUE_NAME", "video_composition")
 
         logger.info("Composition Worker initialized")
@@ -81,16 +92,16 @@ class CompositionWorker:
             logger.info(f"Composing {len(segment_files)} segments")
             final_video_path = self._compose_video(segment_files)
 
-            # Upload final video to S3
-            s3_key = self.s3.generate_final_video_key(project_id, render_job_id)
-            s3_url = self.s3.upload_file(final_video_path, s3_key, content_type="video/mp4")
+            # Upload final video to storage (S3 or local)
+            storage_key = self.storage.generate_composition_key(project_id, render_job_id)
+            storage_url = self.storage.upload_file(final_video_path, storage_key, content_type="video/mp4")
 
             # Update database
             with get_db_context() as db:
                 render_job = db.query(RenderJob).filter(RenderJob.id == render_job_id).first()
                 if render_job:
                     render_job.status = RenderJobStatus.COMPLETED
-                    render_job.s3_final_url = s3_url
+                    render_job.s3_final_url = storage_url
                     db.commit()
 
             # Update Redis
@@ -141,16 +152,32 @@ class CompositionWorker:
                 segment = db.query(Segment).filter(Segment.id == segment_id).first()
 
                 if not segment or not segment.s3_asset_url:
-                    logger.warning(f"Segment {segment_id} not found or missing S3 URL")
+                    logger.warning(f"Segment {segment_id} not found or missing asset URL")
                     continue
 
-                # Extract S3 key from URL
-                # URL format: https://bucket.s3.region.amazonaws.com/key
-                s3_url = segment.s3_asset_url
-                s3_key = s3_url.split(f"{self.s3.bucket_name}.s3.")[-1].split("/", 1)[-1] if "/" in s3_url else None
+                asset_url = segment.s3_asset_url
 
-                if not s3_key:
-                    logger.error(f"Could not extract S3 key from URL: {s3_url}")
+                # Handle local file URLs
+                if asset_url.startswith("file://"):
+                    # Local storage - extract path and use directly or copy to temp
+                    local_path = asset_url.replace("file://", "")
+                    if Path(local_path).exists():
+                        segment_files.append(local_path)
+                        logger.info(f"Using local segment file: {local_path}")
+                    else:
+                        logger.error(f"Local file not found: {local_path}")
+                    continue
+
+                # Handle S3 URLs
+                # URL format: https://bucket.s3.region.amazonaws.com/key
+                if hasattr(self.storage, 'bucket_name'):
+                    storage_key = asset_url.split(f"{self.storage.bucket_name}.s3.")[-1].split("/", 1)[-1] if "/" in asset_url else None
+                else:
+                    logger.error(f"Cannot parse storage key from URL: {asset_url}")
+                    continue
+
+                if not storage_key:
+                    logger.error(f"Could not extract storage key from URL: {asset_url}")
                     continue
 
                 # Download to temp file
@@ -158,7 +185,7 @@ class CompositionWorker:
                 tmp_file.close()
 
                 try:
-                    self.s3.download_file(s3_key, tmp_file.name)
+                    self.storage.download_file(storage_key, tmp_file.name)
                     segment_files.append(tmp_file.name)
                     logger.info(f"Downloaded segment {segment_id} to {tmp_file.name}")
                 except Exception as e:

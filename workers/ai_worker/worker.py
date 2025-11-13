@@ -15,9 +15,9 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from backend.config import get_db_context
-from backend.models import Segment
+from backend.models import Segment, RenderJob
 from backend.models.segment import SegmentStatus
-from backend.services import RabbitMQClient, RedisClient, S3Client
+from backend.services import RabbitMQClient, RedisClient, S3Client, LocalStorageClient
 from adapters import VideoModelFactory
 from adapters.exceptions import AdapterError, get_user_friendly_message
 import pika.exceptions
@@ -38,7 +38,18 @@ class AIWorker:
         """Initialize the AI worker."""
         self.rabbitmq = RabbitMQClient()
         self.redis = RedisClient()
-        self.s3 = S3Client()
+
+        # Use local storage if AWS credentials are not configured
+        aws_key = os.getenv("AWS_ACCESS_KEY_ID", "")
+        use_local_storage = not aws_key or aws_key.strip() == ""
+
+        if use_local_storage:
+            self.storage = LocalStorageClient()
+            logger.info("Using LocalStorageClient (AWS credentials not configured)")
+        else:
+            self.storage = S3Client()
+            logger.info("Using S3Client")
+
         self.queue_name = os.getenv("SEGMENT_QUEUE_NAME", "segment_generation")
 
         logger.info("AI Worker initialized")
@@ -114,6 +125,27 @@ class AIWorker:
                         segment.s3_asset_url = s3_url
                         db.commit()
 
+                    # Update render job progress
+                    render_job = db.query(RenderJob).filter(RenderJob.id == render_job_id).first()
+                    if render_job:
+                        render_job.segments_completed += 1
+                        db.commit()
+
+                        # Check if all segments are complete and trigger composition
+                        if render_job.segments_completed >= render_job.segments_total:
+                            from backend.models.render_job import RenderJobStatus
+                            render_job.status = RenderJobStatus.COMPOSITING
+                            db.commit()
+
+                            # Trigger composition
+                            segment_ids = [UUID(sid) for sid in render_job.segment_ids]
+                            self.rabbitmq.publish_composition_task(
+                                render_job_id=render_job_id,
+                                project_id=render_job.project_id,
+                                segment_ids=segment_ids
+                            )
+                            logger.info(f"Triggered composition for render job {render_job_id}")
+
                 # Update Redis
                 self.redis.set_segment_status(
                     segment_id=segment_id,
@@ -121,7 +153,7 @@ class AIWorker:
                     render_job_id=render_job_id
                 )
 
-                # Increment render job progress
+                # Increment render job progress in Redis
                 self.redis.increment_render_job_progress(render_job_id)
 
                 # Publish completion event
@@ -286,12 +318,12 @@ class AIWorker:
                 segment = db.query(Segment).filter(Segment.id == segment_id).first()
                 project_id = segment.project_id if segment else segment_id
 
-            s3_key = self.s3.generate_segment_key(project_id, segment_id)
+            storage_key = self.storage.generate_segment_key(project_id, segment_id)
 
-            # Upload to S3
-            s3_url = self.s3.upload_file(tmp_path, s3_key, content_type="video/mp4")
+            # Upload to storage (S3 or local)
+            storage_url = self.storage.upload_file(tmp_path, storage_key, content_type="video/mp4")
 
-            return s3_url
+            return storage_url
 
         finally:
             # Clean up temp file

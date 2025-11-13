@@ -34,7 +34,7 @@ class RenderJobResponse(BaseModel):
     segment_ids: List[str]
     s3_final_url: Optional[str] = None
     error_message: Optional[str] = None
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    render_metadata: Dict[str, Any] = Field(default_factory=dict)
     created_at: datetime
     updated_at: datetime
 

@@ -94,8 +94,13 @@ def create_default_user():
     except ModuleNotFoundError:
         from models.user import User
 
-    from passlib.context import CryptContext
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    import bcrypt
+
+    def hash_password(password: str) -> str:
+        """Hash a password using bcrypt."""
+        # Ensure password is bytes and under 72 bytes
+        pwd_bytes = password.encode('utf-8')[:72]
+        return bcrypt.hashpw(pwd_bytes, bcrypt.gensalt()).decode('utf-8')
 
     db = SessionLocal()
     try:
@@ -105,7 +110,7 @@ def create_default_user():
             return existing_user
 
         # Create default user
-        hashed_password = pwd_context.hash("development")
+        hashed_password = hash_password("development")
         default_user = User(
             id=DEFAULT_USER_ID,
             email="dev@videofoundry.local",
