@@ -143,3 +143,43 @@ def delete_segment(
     db.commit()
 
     return None
+
+
+@router.post("/segments/{segment_id}/retry", response_model=SegmentResponse)
+def retry_segment(
+    segment_id: UUID,
+    db: Session = Depends(get_db)
+):
+    """
+    Retry a failed segment by resetting its status to pending.
+
+    This endpoint allows users to retry segment generation after a failure.
+    It resets the segment status and clears error information, allowing
+    the render job to re-process the segment.
+    """
+    segment = db.query(Segment).filter(Segment.id == segment_id).first()
+
+    if not segment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Segment {segment_id} not found"
+        )
+
+    # Only allow retry for failed segments
+    if segment.status != SegmentStatus.FAILED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Can only retry failed segments. Current status: {segment.status}"
+        )
+
+    # Reset segment to pending state
+    segment.status = SegmentStatus.PENDING
+    segment.error_message = None
+    segment.error_code = None
+    segment.external_job_id = None
+    segment.s3_asset_url = None
+
+    db.commit()
+    db.refresh(segment)
+
+    return segment

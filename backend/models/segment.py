@@ -41,6 +41,7 @@ class Segment(Base, TimestampMixin):
     status = Column(SQLEnum(SegmentStatus), default=SegmentStatus.PENDING, nullable=False, index=True)
     s3_asset_url = Column(String(512), nullable=True)
     error_message = Column(Text, nullable=True)
+    error_code = Column(String(100), nullable=True)  # Machine-readable error code for frontend
 
     # External AI model tracking
     external_job_id = Column(String(255), nullable=True)  # Track job ID from external AI service

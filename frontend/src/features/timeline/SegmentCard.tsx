@@ -1,13 +1,39 @@
 import { Segment } from '../../api/projects'
-import { FaTrash, FaSpinner, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa'
+import { FaTrash, FaSpinner, FaCheckCircle, FaExclamationCircle, FaChevronDown, FaChevronUp, FaExpand, FaDownload, FaRedo } from 'react-icons/fa'
 import clsx from 'clsx'
+import { useState } from 'react'
+import VideoPlayer from '../../components/VideoPlayer'
+import VideoModal from '../../components/VideoModal'
+import { getErrorInfo, isRetryableError } from '../../utils/errorMessages'
 
 interface SegmentCardProps {
   segment: Segment
   onDelete: () => void
+  onRetry?: (segmentId: string) => void
 }
 
-export default function SegmentCard({ segment, onDelete }: SegmentCardProps) {
+const MODEL_LABELS: Record<string, string> = {
+  'comfyui': 'ComfyUI',
+  'mock-ai': 'Mock AI',
+  'runway-gen3': 'Runway Gen-3',
+  'stability-ai': 'Stability AI',
+}
+
+export default function SegmentCard({ segment, onDelete, onRetry }: SegmentCardProps) {
+  const [showPreview, setShowPreview] = useState(false)
+  const [showModal, setShowModal] = useState(false)
+  const [isRetrying, setIsRetrying] = useState(false)
+
+  const handleRetry = async () => {
+    if (!onRetry) return
+    setIsRetrying(true)
+    try {
+      await onRetry(segment.id)
+    } finally {
+      setIsRetrying(false)
+    }
+  }
+
   const getStatusIcon = () => {
     switch (segment.status) {
       case 'completed':
@@ -54,24 +80,91 @@ export default function SegmentCard({ segment, onDelete }: SegmentCardProps) {
             </span>
           </div>
           <p className="text-white mb-2">{segment.prompt}</p>
-          <div className="text-sm text-gray-500">
-            Model: {segment.model_params.model || 'default'} | Duration: {segment.model_params.duration || 5}s
+          <div className="flex items-center gap-3 text-sm text-gray-400">
+            <span className="px-2 py-1 bg-purple-900 text-purple-300 rounded text-xs font-medium">
+              {MODEL_LABELS[segment.model_params.model] || segment.model_params.model || 'Unknown'}
+            </span>
+            <span>
+              {segment.model_params.width || 1024}x{segment.model_params.height || 576}
+            </span>
+            <span>{segment.model_params.duration || 5}s</span>
           </div>
-          {segment.error_message && (
-            <div className="mt-2 text-sm text-red-400">
-              Error: {segment.error_message}
+          {segment.error_message && segment.status === 'failed' && (
+            <div className="mt-3 p-3 bg-red-900 bg-opacity-20 border border-red-800 rounded-lg">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <FaExclamationCircle className="text-red-500 flex-shrink-0" />
+                    <span className="text-red-400 font-medium text-sm">
+                      {getErrorInfo(segment.error_code).userMessage}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-400 mb-2">
+                    {getErrorInfo(segment.error_code).troubleshooting}
+                  </p>
+                  {segment.error_code && (
+                    <p className="text-xs text-gray-500 font-mono">
+                      Error code: {segment.error_code}
+                    </p>
+                  )}
+                </div>
+                {onRetry && isRetryableError(segment.error_code) && (
+                  <button
+                    onClick={handleRetry}
+                    disabled={isRetrying}
+                    className="ml-3 flex items-center space-x-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-sm rounded transition"
+                    title="Retry generation"
+                  >
+                    <FaRedo className={clsx(isRetrying && 'animate-spin')} />
+                    <span>{isRetrying ? 'Retrying...' : 'Retry'}</span>
+                  </button>
+                )}
+              </div>
             </div>
           )}
-          {segment.s3_asset_url && (
-            <div className="mt-2">
-              <a
-                href={segment.s3_asset_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-blue-400 hover:text-blue-300"
-              >
-                View Video
-              </a>
+
+          {/* Video Preview Section */}
+          {segment.s3_asset_url && segment.status === 'completed' && (
+            <div className="mt-3 space-y-2">
+              {/* Video Actions */}
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setShowPreview(!showPreview)}
+                  className="flex items-center space-x-2 text-sm text-blue-400 hover:text-blue-300 transition"
+                >
+                  {showPreview ? <FaChevronUp /> : <FaChevronDown />}
+                  <span>{showPreview ? 'Hide' : 'Show'} Preview</span>
+                </button>
+                <button
+                  onClick={() => setShowModal(true)}
+                  className="flex items-center space-x-1 text-sm text-gray-400 hover:text-white transition"
+                  title="View fullscreen"
+                >
+                  <FaExpand />
+                  <span>Fullscreen</span>
+                </button>
+                <a
+                  href={segment.s3_asset_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-1 text-sm text-gray-400 hover:text-white transition"
+                  title="Download video"
+                >
+                  <FaDownload />
+                  <span>Download</span>
+                </a>
+              </div>
+
+              {/* Collapsible Video Preview */}
+              {showPreview && (
+                <div className="mt-3 rounded-lg overflow-hidden border border-gray-600">
+                  <VideoPlayer
+                    videoUrl={segment.s3_asset_url}
+                    controls
+                    className="max-h-64"
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -83,6 +176,17 @@ export default function SegmentCard({ segment, onDelete }: SegmentCardProps) {
           <FaTrash />
         </button>
       </div>
+
+      {/* Video Modal */}
+      {segment.s3_asset_url && (
+        <VideoModal
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+          videoUrl={segment.s3_asset_url}
+          title={`Segment #${segment.order_index + 1}`}
+          description={segment.prompt}
+        />
+      )}
     </div>
   )
 }

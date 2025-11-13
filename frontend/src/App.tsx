@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import ProjectList from './features/projects/ProjectList'
 import TimelineEditor from './features/timeline/TimelineEditor'
 import Dashboard from './features/dashboard/Dashboard'
+import WorkflowLibrary from './features/workflows/WorkflowLibrary'
 import Header from './components/Header'
 
 const queryClient = new QueryClient({
@@ -25,6 +26,7 @@ function App() {
               <Route path="/" element={<ProjectList />} />
               <Route path="/projects/:projectId" element={<TimelineEditor />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/workflows" element={<WorkflowLibrary />} />
             </Routes>
           </main>
         </div>

@@ -19,6 +19,7 @@ from backend.models import Segment
 from backend.models.segment import SegmentStatus
 from backend.services import RabbitMQClient, RedisClient, S3Client
 from adapters import VideoModelFactory
+from adapters.exceptions import AdapterError, get_user_friendly_message
 import pika.exceptions
 
 logging.basicConfig(
@@ -70,9 +71,21 @@ class AIWorker:
             # Create video model adapter
             adapter = VideoModelFactory.create(model_name)
 
-            # Initiate video generation
+            # Initiate video generation with better error handling
             logger.info(f"Initiating generation with {model_name} for segment {segment_id}")
-            external_job_id = await adapter.initiate_generation(prompt, model_params)
+            try:
+                external_job_id = await adapter.initiate_generation(prompt, model_params)
+            except AdapterError as e:
+                # Adapter-specific error with error code
+                logger.error(f"Adapter error initiating generation: {e.message}")
+                self._handle_segment_failure(
+                    segment_id=segment_id,
+                    render_job_id=render_job_id,
+                    error_message=e.message,
+                    error_code=e.error_code,
+                    is_retryable=e.is_retryable
+                )
+                return
 
             # Update database with external job ID
             with get_db_context() as db:
@@ -122,37 +135,94 @@ class AIWorker:
             else:
                 # Handle failure
                 error_msg = result.error_message or "Unknown error during generation"
-                logger.error(f"Segment {segment_id} failed: {error_msg}")
+                error_code = result.metadata.get("error_code") if result.metadata else None
 
-                with get_db_context() as db:
-                    segment = db.query(Segment).filter(Segment.id == segment_id).first()
-                    if segment:
-                        segment.status = SegmentStatus.FAILED
-                        segment.error_message = error_msg
-                        db.commit()
+                logger.error(f"Segment {segment_id} failed: {error_msg} (code: {error_code})")
 
-                self.redis.set_segment_status(
+                # Determine if error is retryable based on error code
+                is_retryable = False
+                if error_code:
+                    error_info = get_user_friendly_message(error_code)
+                    # Errors like connection issues and timeouts are retryable
+                    is_retryable = error_code in ["COMFYUI_CONNECTION_ERROR", "COMFYUI_TIMEOUT", "COMFYUI_GENERATION_ERROR"]
+
+                self._handle_segment_failure(
                     segment_id=segment_id,
-                    status=SegmentStatus.FAILED.value,
-                    render_job_id=render_job_id
+                    render_job_id=render_job_id,
+                    error_message=error_msg,
+                    error_code=error_code,
+                    is_retryable=is_retryable
                 )
 
-        except Exception as e:
-            logger.error(f"Error processing segment {segment_id}: {e}", exc_info=True)
-
-            # Update status to failed
-            with get_db_context() as db:
-                segment = db.query(Segment).filter(Segment.id == segment_id).first()
-                if segment:
-                    segment.status = SegmentStatus.FAILED
-                    segment.error_message = str(e)
-                    db.commit()
-
-            self.redis.set_segment_status(
+        except AdapterError as e:
+            # Adapter-specific error with error code
+            logger.error(f"Adapter error during processing: {e.message}", exc_info=True)
+            self._handle_segment_failure(
                 segment_id=segment_id,
-                status=SegmentStatus.FAILED.value,
-                render_job_id=render_job_id
+                render_job_id=render_job_id,
+                error_message=e.message,
+                error_code=e.error_code,
+                is_retryable=e.is_retryable
             )
+
+        except TimeoutError as e:
+            logger.error(f"Timeout processing segment {segment_id}: {e}")
+            self._handle_segment_failure(
+                segment_id=segment_id,
+                render_job_id=render_job_id,
+                error_message="Video generation timed out. The service may be overloaded.",
+                error_code="COMFYUI_TIMEOUT",
+                is_retryable=True
+            )
+
+        except Exception as e:
+            logger.error(f"Unexpected error processing segment {segment_id}: {e}", exc_info=True)
+            self._handle_segment_failure(
+                segment_id=segment_id,
+                render_job_id=render_job_id,
+                error_message="An unexpected error occurred during video generation.",
+                error_code="INTERNAL_ERROR",
+                is_retryable=False
+            )
+
+    def _handle_segment_failure(
+        self,
+        segment_id: UUID,
+        render_job_id: UUID,
+        error_message: str,
+        error_code: str = None,
+        is_retryable: bool = False
+    ):
+        """
+        Handle segment failure with proper error messaging.
+
+        Args:
+            segment_id: Segment UUID
+            render_job_id: Render job UUID
+            error_message: Error message
+            error_code: Machine-readable error code
+            is_retryable: Whether the error is retryable
+        """
+        logger.error(
+            f"Segment {segment_id} failed: {error_message} "
+            f"(code: {error_code}, retryable: {is_retryable})"
+        )
+
+        # Update database
+        with get_db_context() as db:
+            segment = db.query(Segment).filter(Segment.id == segment_id).first()
+            if segment:
+                segment.status = SegmentStatus.FAILED
+                segment.error_message = error_message
+                segment.error_code = error_code
+                db.commit()
+
+        # Update Redis
+        self.redis.set_segment_status(
+            segment_id=segment_id,
+            status=SegmentStatus.FAILED.value,
+            render_job_id=render_job_id
+        )
 
     async def _poll_for_completion(self, adapter, external_job_id: str, max_attempts: int = 180):
         """
