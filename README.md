@@ -58,9 +58,11 @@ Video Foundry is a sophisticated AI video generation platform that combines the 
 
 ### Prerequisites
 
-- [Docker](https://www.docker.com/) & Docker Compose
+- [Docker Desktop](https://www.docker.com/products/docker-desktop) (Windows/Mac) or Docker Engine (Linux)
 - [Git](https://git-scm.com/)
 - (Optional) NVIDIA GPU with CUDA for local ComfyUI generation
+
+**📝 Note:** Windows users should see [WINDOWS_SETUP.md](WINDOWS_SETUP.md) for complete PowerShell-based setup instructions.
 
 ### Installation
 
@@ -71,22 +73,38 @@ cd Jynco
 ```
 
 2. **Configure environment**
+
+**Linux/Mac/WSL:**
 ```bash
-cp .env.example .env
-# Edit .env with your configuration (optional for local setup)
+cp .env.developer.example .env
+```
+
+**Windows (PowerShell):**
+```powershell
+Copy-Item .env.developer.example .env
 ```
 
 3. **Start all services**
+
+**Using automation tools (recommended):**
+
+Linux/Mac/WSL:
 ```bash
-# Using Docker Compose
+make setup              # Complete setup and start
+# Or manually:
+make up
+```
+
+Windows (PowerShell):
+```powershell
+.\dev.ps1 setup         # Complete setup and start
+# Or manually:
+.\dev.ps1 up
+```
+
+**Using Docker Compose directly:**
+```bash
 docker-compose up -d
-
-# Or use the provided startup scripts
-# Windows:
-start.bat
-
-# Linux/Mac:
-./start.sh
 ```
 
 4. **Access the application**
