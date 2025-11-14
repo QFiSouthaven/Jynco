@@ -2,8 +2,19 @@
 
 This guide covers all automation tools and workflows for seamless development with Claude Code.
 
+## 💻 Platform-Specific Guides
+
+**For Windows Users (without WSL):**
+See [WINDOWS_SETUP.md](WINDOWS_SETUP.md) for complete Windows-specific instructions using PowerShell and `dev.ps1`.
+
+**For Linux/Mac/WSL Users:**
+Continue with this guide using Makefile and bash scripts.
+
+---
+
 ## 🚀 Quick Start
 
+**Linux/Mac/WSL:**
 ```bash
 # First time setup
 make setup              # Install everything and start services
@@ -13,6 +24,18 @@ make setup              # Install everything and start services
 make dev                # Start services with logs
 make test               # Run tests
 make logs               # Check logs
+```
+
+**Windows (PowerShell):**
+```powershell
+# First time setup
+.\dev.ps1 setup              # Install everything and start services
+.\scripts\dev-check.ps1      # Verify your environment
+
+# Daily workflow
+.\dev.ps1 dev                # Start services with logs
+.\dev.ps1 test               # Run tests
+.\dev.ps1 logs               # Check logs
 ```
 
 ---
