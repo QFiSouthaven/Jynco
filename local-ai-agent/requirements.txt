@@ -1,0 +1,21 @@
+# Web Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+
+# Google Gemini AI
+google-generativeai==0.3.2
+
+# Async HTTP Client
+aiohttp==3.9.1
+
+# Environment Management
+python-dotenv==1.0.0
+
+# Git Automation
+GitPython==3.1.40
+
+# Docker Automation
+docker==7.0.0
+
+# Type Hints Support
+typing-extensions==4.9.0
