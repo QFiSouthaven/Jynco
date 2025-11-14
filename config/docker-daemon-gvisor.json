@@ -1,0 +1,27 @@
+{
+  "runtimes": {
+    "runsc": {
+      "path": "/usr/local/bin/runsc",
+      "runtimeArgs": [
+        "--debug-log=/var/log/runsc/%ID%/",
+        "--platform=ptrace",
+        "--network=sandbox"
+      ]
+    },
+    "runsc-kvm": {
+      "path": "/usr/local/bin/runsc",
+      "runtimeArgs": [
+        "--debug-log=/var/log/runsc/%ID%/",
+        "--platform=kvm",
+        "--network=sandbox"
+      ]
+    }
+  },
+  "default-runtime": "runc",
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3"
+  },
+  "userns-remap": "default"
+}
