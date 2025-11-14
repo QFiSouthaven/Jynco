@@ -1,0 +1,176 @@
+# Workflow Allowlist Configuration
+# This file defines approved nodes, models, and repositories for each execution mode
+
+---
+# PRODUCTION MODE ALLOWLIST
+# Managed by platform security team
+# Only these resources are permitted in production deployments
+
+execution_mode: production
+
+nodes:
+  # Core ComfyUI Nodes
+  - type: "LoadImage"
+    version: "1.0"
+    approved_by: "security-team"
+    approved_at: "2025-11-01T00:00:00Z"
+    notes: "Standard image loading node"
+
+  - type: "SaveImage"
+    version: "1.0"
+    approved_by: "security-team"
+    approved_at: "2025-11-01T00:00:00Z"
+    notes: "Standard image saving node"
+
+  - type: "VAEEncode"
+    version: "1.0"
+    approved_by: "security-team"
+    approved_at: "2025-11-01T00:00:00Z"
+    notes: "VAE encoding for latent space"
+
+  - type: "VAEDecode"
+    version: "1.0"
+    approved_by: "security-team"
+    approved_at: "2025-11-01T00:00:00Z"
+    notes: "VAE decoding from latent space"
+
+  - type: "KSampler"
+    version: "1.0"
+    approved_by: "security-team"
+    approved_at: "2025-11-01T00:00:00Z"
+    notes: "Standard K-Sampler for diffusion"
+
+  - type: "CheckpointLoaderSimple"
+    version: "1.0"
+    approved_by: "security-team"
+    approved_at: "2025-11-01T00:00:00Z"
+    notes: "Load model checkpoints"
+
+  - type: "CLIPTextEncode"
+    version: "1.0"
+    approved_by: "security-team"
+    approved_at: "2025-11-01T00:00:00Z"
+    notes: "Text encoding for prompts"
+
+  - type: "EmptyLatentImage"
+    version: "1.0"
+    approved_by: "security-team"
+    approved_at: "2025-11-01T00:00:00Z"
+    notes: "Create empty latent image"
+
+models:
+  # Vetted models stored in internal artifact repository
+  - identifier: "stable-diffusion-v1-5"
+    source: "internal-repository"
+    checksum: "sha256:abc123def456..."
+    approved_by: "security-team"
+    approved_at: "2025-11-01T00:00:00Z"
+    notes: "Stable Diffusion v1.5 base model"
+
+  - identifier: "stable-diffusion-xl-base-1.0"
+    source: "internal-repository"
+    checksum: "sha256:xyz789abc012..."
+    approved_by: "security-team"
+    approved_at: "2025-11-01T00:00:00Z"
+    notes: "SDXL base model"
+
+repositories:
+  # NO custom repositories allowed in production mode
+  # All nodes must be part of core ComfyUI or internal extensions
+
+---
+# SELF-HOSTED PRODUCTION MODE ALLOWLIST
+# Managed by instance administrator
+# Allows admin-approved custom nodes and models
+
+execution_mode: self-hosted-production
+
+nodes:
+  # Inherit all production nodes (implicit)
+  # Plus admin-approved custom nodes:
+
+  - type: "LoadImage"
+    approved_by: "admin@company.com"
+    approved_at: "2025-11-10T00:00:00Z"
+
+  - type: "SaveImage"
+    approved_by: "admin@company.com"
+    approved_at: "2025-11-10T00:00:00Z"
+
+  - type: "VAEEncode"
+    approved_by: "admin@company.com"
+    approved_at: "2025-11-10T00:00:00Z"
+
+  - type: "VAEDecode"
+    approved_by: "admin@company.com"
+    approved_at: "2025-11-10T00:00:00Z"
+
+  - type: "KSampler"
+    approved_by: "admin@company.com"
+    approved_at: "2025-11-10T00:00:00Z"
+
+  - type: "CheckpointLoaderSimple"
+    approved_by: "admin@company.com"
+    approved_at: "2025-11-10T00:00:00Z"
+
+  - type: "CLIPTextEncode"
+    approved_by: "admin@company.com"
+    approved_at: "2025-11-10T00:00:00Z"
+
+  - type: "EmptyLatentImage"
+    approved_by: "admin@company.com"
+    approved_at: "2025-11-10T00:00:00Z"
+
+  # Example: Custom video generation node
+  # - type: "CustomVideoGenerator"
+  #   repository: "https://github.com/company/comfyui-custom-nodes"
+  #   approved_by: "admin@company.com"
+  #   approved_at: "2025-11-10T00:00:00Z"
+  #   notes: "Company-developed video generation node"
+
+models:
+  # Admin can approve models from trusted sources
+  - identifier: "stable-diffusion-v1-5"
+    source: "https://huggingface.co/runwayml/stable-diffusion-v1-5"
+    approved_by: "admin@company.com"
+    approved_at: "2025-11-10T00:00:00Z"
+
+  # Example: Custom fine-tuned model
+  # - identifier: "company-fine-tuned-model"
+  #   source: "https://huggingface.co/company/fine-tuned-sd"
+  #   approved_by: "admin@company.com"
+  #   approved_at: "2025-11-10T00:00:00Z"
+  #   notes: "Internal fine-tuned model for product imagery"
+
+repositories:
+  # Admin can approve specific repositories
+  # Example:
+  # - url: "https://github.com/company/comfyui-custom-nodes"
+  #   allowed_branches: ["v1.0.0", "v1.1.0", "main"]
+  #   approved_by: "admin@company.com"
+  #   approved_at: "2025-11-10T00:00:00Z"
+  #   notes: "Internal custom nodes repository"
+  #
+  # - url: "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite"
+  #   allowed_branches: ["main"]
+  #   approved_by: "admin@company.com"
+  #   approved_at: "2025-11-10T00:00:00Z"
+  #   notes: "Trusted third-party video helper nodes"
+
+---
+# DEVELOPER MODE
+# No allowlist required - all resources permitted with warnings
+# This section is included for documentation only
+
+execution_mode: developer
+
+# In developer mode:
+# - All nodes are allowed (logged)
+# - All models are allowed (logged)
+# - All repositories are allowed (logged with security warning)
+# - No enforcement, only audit logging
+
+notes: |
+  Developer mode is intended for local development and experimentation only.
+  DO NOT use developer mode in production environments or on public networks.
+  All workflow resources are permitted but logged for audit purposes.

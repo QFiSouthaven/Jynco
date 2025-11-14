@@ -1,0 +1,302 @@
+# Docker Compose Override for PRODUCTION Mode
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.production.yml up -d
+#
+# PRODUCTION MODE REQUIREMENTS:
+# - gVisor runtime installed
+# - Vault configured and accessible
+# - S3 bucket configured with appropriate IAM policies
+# - OIDC/SAML provider configured
+# - Network policies enforced
+
+version: '3.8'
+
+services:
+  # Backend API Gateway - Production Configuration
+  backend:
+    environment:
+      # Execution Mode
+      JYNCO_EXECUTION_MODE: production
+
+      # Secrets Management (Vault MANDATORY)
+      VAULT_ADDR: ${VAULT_ADDR}  # e.g., https://vault.company.com
+      VAULT_TOKEN: ${VAULT_TOKEN}
+      VAULT_NAMESPACE: ${VAULT_NAMESPACE:-videofoundry}
+
+      # Authentication/IAM (MANDATORY)
+      OIDC_PROVIDER_URL: ${OIDC_PROVIDER_URL}  # e.g., https://keycloak.company.com/realms/videofoundry
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
+      ENABLE_IAM: "true"
+
+      # Storage (S3 MANDATORY)
+      S3_BUCKET: ${S3_BUCKET}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION}
+      USE_S3_STORAGE: "true"
+
+      # Security
+      ENABLE_WORKFLOW_VETTING: "true"
+      ENABLE_NETWORK_ISOLATION: "true"
+      WORKFLOW_ALLOWLIST_PATH: /config/workflow_allowlist.yaml
+
+      # Application
+      ENVIRONMENT: production
+      DEBUG: "false"
+
+    volumes:
+      # Mount workflow allowlist
+      - ./config/workflow_allowlist.yaml:/config/workflow_allowlist.yaml:ro
+
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/tmp
+
+  # AI Worker Service - Production Configuration with gVisor
+  ai_worker:
+    runtime: runsc  # gVisor runtime (MUST be configured on host)
+
+    environment:
+      JYNCO_EXECUTION_MODE: production
+      VAULT_ADDR: ${VAULT_ADDR}
+      VAULT_TOKEN: ${VAULT_TOKEN}
+      S3_BUCKET: ${S3_BUCKET}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION}
+      ENABLE_WORKFLOW_VETTING: "true"
+
+    volumes:
+      # Mount workflow allowlist (read-only)
+      - ./config/workflow_allowlist.yaml:/config/workflow_allowlist.yaml:ro
+      # No bind mounts for code - use image only
+      - worker_temp:/tmp/worker
+
+    # Sandboxing & Security
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:unconfined  # gVisor provides syscall filtering
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/tmp
+
+    # Network isolation - NO internet access
+    networks:
+      - isolated_workers
+      - default  # For internal services
+    dns: []  # Disable DNS resolution
+
+    # Prevent container from running as root
+    user: "1000:1000"
+
+  # Composition Worker - Production Configuration
+  composition_worker:
+    runtime: runsc  # gVisor runtime
+
+    environment:
+      JYNCO_EXECUTION_MODE: production
+      S3_BUCKET: ${S3_BUCKET}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION}
+
+    volumes:
+      - composition_temp:/tmp/composition
+
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/tmp
+
+    networks:
+      - default  # Only internal services
+
+    user: "1000:1000"
+
+  # ComfyUI Service - Production Configuration
+  comfyui:
+    runtime: runsc  # gVisor runtime
+
+    environment:
+      CLI_ARGS: --listen 0.0.0.0 --port 8188 --disable-auto-launch
+
+    volumes:
+      # Models from internal artifact repository ONLY
+      - comfyui_models:/app/models:ro  # Read-only
+      - comfyui_output:/app/output
+      - comfyui_input:/app/input
+
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+    # Network isolation - NO internet access
+    networks:
+      - isolated_workers
+    dns: []
+
+    # GPU access (if needed and secure)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # PostgreSQL - Production hardening
+  postgres:
+    environment:
+      # Use strong password from secrets
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+
+    secrets:
+      - postgres_password
+
+    # Disable public access
+    ports: []
+
+    # Security
+    security_opt:
+      - no-new-privileges:true
+
+    # Backup volumes
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups/postgres:/backups
+
+  # Redis - Production hardening
+  redis:
+    command: >
+      redis-server
+      --requirepass "${REDIS_PASSWORD}"
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+
+    # Disable public access
+    ports: []
+
+    security_opt:
+      - no-new-privileges:true
+
+  # RabbitMQ - Production hardening
+  rabbitmq:
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS_FILE: /run/secrets/rabbitmq_password
+
+    secrets:
+      - rabbitmq_password
+
+    # Disable public management UI
+    ports:
+      - "56720:5672"  # AMQP only, not exposed externally
+
+    security_opt:
+      - no-new-privileges:true
+
+  # Frontend - Production configuration
+  frontend:
+    # Build for production
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile  # Production Dockerfile (not .dev)
+      args:
+        VITE_API_URL: ${FRONTEND_API_URL}
+
+    environment:
+      - NODE_ENV=production
+
+    security_opt:
+      - no-new-privileges:true
+
+    # No development volumes
+    volumes: []
+
+  # Portainer - DISABLED in production
+  portainer:
+    profiles:
+      - admin-tools  # Only start with: docker-compose --profile admin-tools up
+
+# Networks
+networks:
+  # Isolated network for AI workers (NO internet access)
+  isolated_workers:
+    driver: bridge
+    internal: true  # No external connectivity
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+  # Default network for internal services
+  default:
+    driver: bridge
+
+# Secrets (for sensitive data)
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+
+  rabbitmq_password:
+    file: ./secrets/rabbitmq_password.txt
+
+# Volumes
+volumes:
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/data/postgres  # Use dedicated mount
+
+  redis_data:
+    driver: local
+
+  rabbitmq_data:
+    driver: local
+
+  worker_temp:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: size=2g,uid=1000
+
+  composition_temp:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: size=5g,uid=1000
+
+  comfyui_models:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind,ro
+      device: /mnt/data/comfyui_models  # Pre-vetted models
+
+  comfyui_output:
+    driver: local
+
+  comfyui_input:
+    driver: local
+
+  portainer_data:
+    driver: local
